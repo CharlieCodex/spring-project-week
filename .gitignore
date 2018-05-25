@@ -1,4 +1,7 @@
-#Mac stuff
+# Ignore processed data
+processed/
+
+# Mac stuff
 .DS_STORE
 
 # Byte-compiled / optimized / DLL files
