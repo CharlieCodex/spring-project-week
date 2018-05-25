@@ -1,58 +1,23 @@
-import numpy as np
-
-addr = 0x79
-def watch_addr(fn):
-    def internal(self, *args, **kwargs):
-        if self.offset == addr:
-            print('we out here')
-        return fn(self, *args, **kwargs)
-    return internal
-
-class CountedBuffer:
-    def __init__(self, raw):
-        self.raw = raw
-        self.offset = 0
-
-    def read_int(self, n_bytes):
-        self.offset += n_bytes
-        return int.from_bytes(self.raw.read(n_bytes), 'big')
-
-    def _read_var_length_bits(self):
-        bits = format(int.from_bytes(self.raw.read(1),'big'), '08b')
-        n = 0
-        if bits[0] == '1':
-            n_bits, n = self._read_var_length_bits()
-            bits = bits[1:] + n_bits
-        return bits[1:], n+1
-
-    def read_var_length(self):
-        bits, n = self._read_var_length_bits()
-        self.offset += n 
-        return int(bits,2), n
-    @watch_addr
-    def read_hex(self, n_bytes):
-        self.offset += n_bytes
-        return self.raw.read(n_bytes).hex()
-
-    def read(self, n_bytes):
-        self.offset += n_bytes
-        return self.raw.read(n_bytes)
-
-    def peek(self, n_bytes):
-        return self.raw.peek(n_bytes)[:n_bytes]
-
-    def skip(self, n_bytes):
-        self.offset += n_bytes
-        self.raw.read(n_bytes)
-
-    def skip_until_break(self, break_code):
-        n=0
-        while self.raw.read(1) != break_code:
-            n+=1
-        self.offset += n
-        return n            
+meta_events = {
+    '00': 'Sequence number',
+    '01': 'Text event',
+    '02': 'Copyright notice',
+    '03': 'Sequence or track name',
+    '04': 'Instrument name',
+    '05': 'Lyric text',
+    '06': 'Marker text',
+    '07': 'Cue point',
+    '20': 'Channel Prefix',
+    '2f': 'End of track',
+    '51': 'Tempo',
+    '54': 'SMTPE offset',
+    '58': 'Time signature',
+    '59': 'Key signature',
+    '7f': 'Sequence specific event',
+}
 
 def read_header(buf):
+    '''Reads a midi header chunk and returns a dict of fmt, trakcs, and div'''
     string_lit = buf.read(4)
     if string_lit != b'MThd':
         raise(ValueError('read_header called on non-header chunk'))
@@ -69,6 +34,8 @@ def read_header(buf):
     return {'fmt': fmt, 'tracks': n_tracks, 'div': division}
 
 def read_chunk(buf):
+    '''Reads a midi track chunk and returns a list of event dicts,
+       each containing {dt, type, key, vel}'''
     print('new block at {:#04x}'.format(buf.offset))
     events = []
     string_lit = buf.read(4)
@@ -78,19 +45,18 @@ def read_chunk(buf):
         end_offset = buf.offset + length
         while buf.offset < end_offset:
             dt, _ = buf.read_var_length()
-            print('dt', dt)
-            print('bytes left in chunk: ', end_offset-buf.offset)
-            print('reading until {:#04x}'.format(end_offset))
+            print('\n\tdt', dt)
+            print('\tbytes left in chunk: ', end_offset-buf.offset)
+            print('\treading until {:#04x}'.format(end_offset))
             desc = buf.read_int(1)
             e_descriptor = (desc>>4, desc%0x10)
-            print('Descriptor: {0[0]:1x}{0[1]:1x}',e_descriptor)
             if e_descriptor[0] == 0xF:
                 if e_descriptor[1] == 0xF:
                     # meta event
-                    meta_type = buf.read_hex(1)
+                    meta_type = meta_events[buf.read_hex(1)]
                     meta_length, _ = buf.read_var_length()
                     buf.skip(meta_length)
-                    print('\tMeta event {}, {} bytes'.format(meta_type, meta_length))
+                    print('\tMeta event "{}", {} bytes'.format(meta_type, meta_length))
                 else:
                     # sysex event, format 1
                     sysex_length, _ = buf.read_var_length()
@@ -121,22 +87,3 @@ def read_chunk(buf):
         print('Unknown block descriptor {}'.format(string_lit))
         raise(ValueError('Invalid block descriptor at {:#x}'.format(buf.offset)))
     return events
-
-def parse(f):
-    buf = CountedBuffer(open(f,'rb'))
-    header = read_header(buf)
-    events = []
-    print(buf.peek(4))
-    while buf.peek(4) == b'MTrk':
-        print('now parsing track chunk')
-        events.append(read_chunk(buf))
-    return events
-
-def event2vec(event):
-    dt = np.array([int(x) for x in '{:032b}'.format(event['dt'])]) # list of 0 and 1's
-    on_off = np.array((0 if event['type'] == 'note_off' else 1,)) # 0 or 1 as a 1 tuple
-    key = np.zeros((128,))
-    key[event['key']] = 1
-    vel = np.zeros((128,))
-    key[event['vel']] = 1
-    return np.concatenate((dt, on_off, key, vel))
