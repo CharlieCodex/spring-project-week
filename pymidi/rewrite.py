@@ -1,3 +1,5 @@
+import numpy as np
+
 addr = 0x79
 def watch_addr(fn):
     def internal(self, *args, **kwargs):
@@ -37,7 +39,7 @@ class CountedBuffer:
         return self.raw.read(n_bytes)
 
     def peek(self, n_bytes):
-        return self.raw.peek(n_bytes)
+        return self.raw.peek(n_bytes)[:n_bytes]
 
     def skip(self, n_bytes):
         self.offset += n_bytes
@@ -72,6 +74,7 @@ def read_chunk(buf):
     string_lit = buf.read(4)
     if string_lit == b'MTrk':
         length = buf.read_int(4)
+        print('Track of length:\n\t{}'.format(length))
         end_offset = buf.offset + length
         while buf.offset < end_offset:
             dt, _ = buf.read_var_length()
@@ -80,7 +83,7 @@ def read_chunk(buf):
             print('reading until {:#04x}'.format(end_offset))
             desc = buf.read_int(1)
             e_descriptor = (desc>>4, desc%0x10)
-            print('Descriptor: ',e_descriptor)
+            print('Descriptor: {0[0]:1x}{0[1]:1x}',e_descriptor)
             if e_descriptor[0] == 0xF:
                 if e_descriptor[1] == 0xF:
                     # meta event
@@ -96,11 +99,14 @@ def read_chunk(buf):
             elif e_descriptor[0] == 0x8:
                 key = buf.read_int(1)
                 vel = buf.read_int(1)
-                events.append({'type':'note_off', 'key':key, 'vel':vel})
+                events.append({'dt': dt, 'type':'note_off', 'key':key, 'vel':0x3F})
             elif e_descriptor[0] == 0x9:
                 key = buf.read_int(1)
                 vel = buf.read_int(1)
-                events.append({'type':'note_on', 'key':key, 'vel':vel})
+                if vel != 0x00:
+                    events.append({'dt': dt, 'type':'note_on', 'key':key, 'vel':vel})
+                else:
+                    events.append({'dt': dt, 'type':'note_off', 'key':key, 'vel':0x3F})
             elif 0xA <= e_descriptor[0] <= 0xB or e_descriptor == 0xE:
                 print('\tskipping A, B, or E')
                 buf.skip(2)
@@ -115,11 +121,13 @@ def read_chunk(buf):
         print('Unknown block descriptor {}'.format(string_lit))
         raise(ValueError('Invalid block descriptor at {:#x}'.format(buf.offset)))
     return events
-            
 
-if __name__ == '__main__':
-    buf = CountedBuffer(open('sample.mid','rb'))
+def parse(f):
+    buf = CountedBuffer(open(f,'rb'))
     header = read_header(buf)
     events = []
-    while buf.peek(4) == b'MThd':
+    print(buf.peek(4))
+    while buf.peek(4) == b'MTrk':
+        print('now parsing track chunk')
         events.append(read_chunk(buf))
+    return events
