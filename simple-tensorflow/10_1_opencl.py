@@ -24,20 +24,20 @@ class ClWrapper:
         func(self.queue, global_size, local_size, *(in_buffs+out_buffs))
         print('copying tensors')
         for i, tensor in enumerate(out_np):
-            print(tensor, i)
             cl.enqueue_copy(self.queue, tensor, out_buffs[i])
+        print('whooo returning')
         return out_np
 
 if __name__ == '__main__':
-    n, m = 100, 100
+    n, m = 64, 64
     M = np.random.rand(n, m)
     N = np.random.rand(m, n)
     Y = np.zeros(shape=(n,n,))
     clw = ClWrapper('10_1.cl')
-    #           inputs, output, name output dimensions, common axis 
     clw.compute(
         in_np=(np.int32(n),np.int32(m),M,N,),
         out_np=(Y,),
         func_name='matmul',
-        global_size=(1,1,))
+        global_size=(n, n),
+        local_size=(32,32,))
     print(Y)
