@@ -15,7 +15,9 @@ __kernel void matmul(
 {
 	int i = get_global_id(0); //gets the global work-item ID (threadID.x) of the thread.
 	int j = get_global_id(1); //gets the global work-item ID (threadID.y) of the thread.
-	for(int k = 0; k < m; k++){
-	    Y[i*n+j] += B[i*n+k]*A[k*n+j];
+    float a = 0.0f;
+    for(int k = 0; k < m; k++){
+	    a += B[i]*A[j];
     }
+    Y[i*n+j] = a;
 }
