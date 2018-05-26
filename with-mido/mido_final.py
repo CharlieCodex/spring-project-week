@@ -10,7 +10,7 @@ def parse_events(f):
     for msg in midi:
         if msg.type == 'set_tempo':
             print('\ttempo change to {} µspq after {} notes'.format(msg.tempo,n))
-            tempo = msg.tempo
+            # tempo = msg.tempo
             n=0
         if msg.type == 'note_on' or msg.type == 'note_off':
             n += 1
@@ -22,7 +22,7 @@ def parse_events(f):
     return events
 
 def msg2vec(msg):
-    '''Transform a mido message into a vector of length 290'''
+    '''Transform a mido message into a vector of length 259'''
     return event2vec({
         'type': msg.type,
         'dt': msg.time,
@@ -31,7 +31,7 @@ def msg2vec(msg):
 
 
 def event2vec(event):
-    '''Transform a single event into a vector of length 290'''
+    '''Transform a single event into a vector of length 259'''
     dt = np.array((event['dt'],)) # list of 0 and 1's
     on_off = np.array((
         0 if event['type'] == 'note_off' else 1,
@@ -44,8 +44,9 @@ def event2vec(event):
     return np.concatenate((dt, on_off, key, vel))
 
 def vec2event(vec):
-    '''Transform a vector of length 290 into a midi event'''
-    dt = vec[0]*500000 # get first component of vector
+    '''Transform a vector of length 259 into a midi event'''
+    # print(vec)
+    dt = vec[0]*50000 # get first component of vector
     vec_on_off = vec[1:3] # get on/of components [1 hot]
     vec_key = vec[3:3+128] # get key components [1 hot]
     vec_vel = vec[3+128:] # get velocity components [1 hot]

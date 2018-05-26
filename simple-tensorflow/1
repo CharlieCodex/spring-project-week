@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "10_1_npy.py", line 66, in <module>
+    train_step(learning_rate, y[i].reshape(1,259),x[i].reshape(1,-1), W, b)
+  File "10_1_npy.py", line 49, in train_step
+    dCdW = dSdW(Y, X, W, b) @ dCdY(Y_, Y) @ softmax_der(Y)
+  File "10_1_npy.py", line 28, in softmax_der
+    out[i][j] = softmax_der(vec, i, j)
+  File "10_1_npy.py", line 29, in softmax_der
+    return np.exp(vec[i])*(np.exp(vec[j])-np.sum(np.exp(vec)))/ \
+IndexError: invalid index to scalar variable.
