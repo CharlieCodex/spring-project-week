@@ -1,6 +1,10 @@
 # Ignore processed data
 processed/
-
+checkpoints/
+Sample_file_*.mid
+*.index
+*.meta
+*.data*
 # Mac stuff
 .DS_STORE
 

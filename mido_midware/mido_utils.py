@@ -62,6 +62,10 @@ def event2msg(event):
         note=event['key'],
         velocity=event['vel'])
 
+def vec2msg (vec):
+    '''Conver a 259 vector to a mido.Message'''
+    return event2msg(vec2event(vec))
+
 def translate_file(in_path, out_path):
     '''Read midi file from in_path and create an np array file at out_path'''
     events = parse_events(in_path)

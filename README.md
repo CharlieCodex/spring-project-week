@@ -4,4 +4,5 @@ The end goal of this repo is to provide a neural network trained on classical mu
 unique and interesting music.
 ## Dependencies
 _mido_ - available on pip  
-_numpy_ - prepackaged with cpython  
+_numpy_ - prepackaged with cpython
+_tensorflow_ - Google's machine learning and tensor calculus library
