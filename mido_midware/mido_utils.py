@@ -4,19 +4,20 @@ from os import listdir
 
 def parse_events(f):
     midi = MidiFile(f)
-    length = midi.length
     events = []
     n = 0
-    for msg in midi:
+    for msg in merge_tracks(midi.tracks):
         if msg.type == 'set_tempo':
-            print('\ttempo change to {} µspq after {} notes'.format(msg.tempo,n))
+            print(msg.time, msg.tempo)
+            #print('\ttempo change to {} µspq after {} notes'.format(msg.tempo,n))
             # tempo = msg.tempo
             n=0
         if msg.type == 'note_on' or msg.type == 'note_off':
+            print(msg.time)
             n += 1
             events.append({
                 'type': msg.type,
-                'dt': msg.time/length,
+                'dt': msg.time,
                 'key': msg.note,
                 'vel': msg.velocity})
     return events
@@ -34,19 +35,26 @@ def event2vec(event):
     '''Transform a single event into a vector of length 259'''
     dt = np.array((event['dt'],)) # list of 0 and 1's
     on_off = np.array((
-        0 if event['type'] == 'note_off' else 1,
-        1 if event['type'] == 'note_off' else 0,)) # onehot encoding for on/off
-    key = np.zeros((128,))
-    key[event['key']] = 1
-    vel = np.zeros((128,))
-    vel[event['vel']] = 1
-    # print('dt: ', event['dt'], dt)
+        1 if event['type'] == 'note_on' else 0,
+        1 if event['type'] == 'note_off' else 0,
+        1 if event['type'] == 'tempo' else 0,)) # onehot encoding for on/off
+    if event['type'] == 'tempo':
+        # binary representation of 
+        tempo = np.array([int(c) for c in format('032b',event['tempo'])])
+        key = tempo[:128]
+        vel = tempo[128:]
+    else:
+        # one-hot encode for note on/off
+        key = np.zeros((128,))
+        key[event['key']] = 1
+        vel = np.zeros((128,))
+        vel[event['vel']] = 1
     return np.concatenate((dt, on_off, key, vel))
 
 def vec2event(vec):
     '''Transform a vector of length 259 into a midi event'''
     # print(vec)
-    dt = vec[0]*50000 # get first component of vector
+    dt = vec[0] # get first component of vector
     vec_on_off = vec[1:3] # get on/of components [1 hot]
     vec_key = vec[3:3+128] # get key components [1 hot]
     vec_vel = vec[3+128:] # get velocity components [1 hot]

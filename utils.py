@@ -9,7 +9,7 @@ def track_seed():
     """
     dt = np.array((0,))
     on_off = np.zeros((2,))             # make an zero vector of shape (2,)
-    on_off[1] = 1                       # one hot encode the on component
+    on_off[0] = 1                       # one hot encode the on component
     note = np.zeros((128,))
     note[60] = 1                        # middle C
     vel = np.zeros((128,))

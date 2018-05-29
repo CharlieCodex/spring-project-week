@@ -66,7 +66,7 @@ loss = tf.nn.softmax_cross_entropy_with_logits(logits=Ylogits, labels=Yflat_)
 loss = tf.reshape(loss, [batchsize, -1])      
 
 # [ BATCHSIZE x SEQLEN, VECLEN ]
-Yo = tf.nn.softmax(Ylogits, name='Yo')        
+Yo = tf.nn.relu(Ylogits, name='Yo')        
 
 # [ BATCHSIZE x SEQLEN ]
 Y = tf.argmax(Yo, 1)                          
@@ -91,7 +91,7 @@ init = tf.global_variables_initializer()
 sess = tf.Session()
 sess.run(init)
 step = 0
-nb_epochs = 10
+nb_epochs = 1000
 for x, y_, epoch in utils.rnn_minibatch_sequencer(data, BATCHSIZE, SEQLEN, nb_epochs=nb_epochs):
     print('Epoch {} of {}, step {}'.format(epoch+1, nb_epochs, step))
     # train on one minibatch
@@ -114,12 +114,12 @@ for x, y_, epoch in utils.rnn_minibatch_sequencer(data, BATCHSIZE, SEQLEN, nb_ep
             # append this to our midi file as a mido.Message
             trk.append(mido_utils.vec2msg(rc))
             ry = np.array([[rc]])
-        mid.save('Sample_file_{}_{}.mid'.format(run_timestamp,step))
+        mid.save('samples/{}_{}.mid'.format(run_timestamp,step))
 
     # save a checkpoint (every 500 batches)
     if step // 10 % _50_BATCHES == 0:
         saved_file = saver.save(sess, 'checkpoints/rnn_train_{}'.format(run_timestamp), global_step=step)
-        print("Saved file: " + saved_file)
+        print("\tSaved file: " + saved_file)
 
     # loop state around h_out -> h_in
     istate = ostate
