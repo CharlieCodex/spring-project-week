@@ -8,13 +8,14 @@ def track_seed():
         :return: a vector ready to be sent off to mido_utils' "vec2msg
     """
     dt = np.array((0,))
-    on_off = np.zeros((2,))             # make an zero vector of shape (2,)
-    on_off[0] = 1                       # one hot encode the on component
+    tempo = np.array((0,))
+    mode = np.zeros((3,))             # make an zero vector of shape (2,)
+    mode[2] = 1                       # one hot encode the on component
     note = np.zeros((128,))
-    note[60] = 1                        # middle C
+    note[0x37] = 1
     vel = np.zeros((128,))
-    vel[0x3F] = 1                       # normal velocity
-    return np.concatenate((dt, on_off, note, vel,))
+    vel [0x37] = 1
+    return np.concatenate((dt, tempo, mode, note, vel,)).astype(int)
 
 def prep_vec(vec):
     """Roll the dice to produce a random integer in the [0..ALPHASIZE] range,
@@ -27,12 +28,13 @@ def prep_vec(vec):
     """
     vec = vec[0]
     dt = np.array((vec[0],))
-    idx_on_off = np.argmax(vec[1:3])    # get the on of bit and argmax
-    on_off = np.zeros((2,))             # make an zero vector of shape (2,)
+    tempo = np.array((vec[1],))
+    idx_on_off = np.argmax(vec[2:5])    # get the on of bit and argmax
+    on_off = np.zeros((3,))             # make an zero vector of shape (2,)
     on_off[idx_on_off] = 1              # one hot encode the on_off component
-    note = one_hot_from_probabilities(vec[3:3+128]) # get the note
-    vel = one_hot_from_probabilities(vec[3+128:])   # get the velocity
-    return np.concatenate((dt, on_off, note, vel,))
+    note = one_hot_from_probabilities(vec[-256:-128]) # get the note
+    vel = one_hot_from_probabilities(vec[-128:])   # get the velocity
+    return np.concatenate((dt, tempo, on_off, note, vel,)).astype(int)
 
 def one_hot_from_probabilities(probabilities, topn=128):
     """Take a vector as a list of probabilties for categories and return a onehot encoded vector,
@@ -56,7 +58,7 @@ def rnn_minibatch_sequencer(raw_data, batch_size, sequence_size, nb_epochs):
     until the input data has been seen nb_epochs times. Sequences are continued even
     between epochs, apart from one, the one corresponding to the end of raw_data.
     The remainder at the end of raw_data that does not fit in an full batch is ignored.
-        :param raw_data: the training text
+        :param raw_data: the training data
         :param batch_size: the size of a training minibatch
         :param sequence_size: the unroll size of the RNN
         :param nb_epochs: number of epochs to train on
@@ -105,8 +107,14 @@ def read_data_files(directory):
     data = [] # init as list but type will mutate to np.ndarray in first iteration
     trackranges = []
     tracklist = glob.glob(directory, recursive=True)
+    nfiles = len(tracklist)
+    n = 0
     for midifile in tracklist:
-        print("Loading file " + midifile)
+        n+=1
+        print("\rLoading file {:04d} of {:04d}: {:_<40.40}".format(
+            n,
+            nfiles,
+            midifile), end='')
         start = len(data)
         if len(data) == 0:
             data = np.load(midifile)
@@ -115,6 +123,7 @@ def read_data_files(directory):
         end = len(data)
         trackranges.append({"start": start, "end": end, "name": midifile.rsplit("/", 1)[-1]})
 
+    print()
     if len(trackranges) == 0:
         sys.exit("No training data has been found. Aborting.")
 
