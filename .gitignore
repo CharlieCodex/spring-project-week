@@ -1,6 +1,7 @@
 # Ignore processed data
 processed/
 checkpoints/
+archives/
 Sample_file_*.mid
 *.index
 *.meta
