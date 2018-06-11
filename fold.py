@@ -9,6 +9,9 @@ def fold(file_list, target_file, internal=False):
     n = len(file_list)
     if n < threshold:
         data = np.load(file_list[0])
+        if internal:
+            print('Removing', file_list[0])
+            remove(file_list[0])
         for fpath in file_list[1:]:
             data = np.concatenate((data,np.load(fpath)))
             if internal:

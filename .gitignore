@@ -1,5 +1,8 @@
 # Ignore processed data
 processed/
+processed_monokey/
+samples/
+chpn/
 checkpoints/
 archives/
 Sample_file_*.mid
